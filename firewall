@@ -1,16 +1,16 @@
 
-# Konfiguracja vlan 70 (tylko dla urzadzen wifi)
+# Konfiguracja vlan 70 (tylko dla urzadzen wifi).
 config zone
 	option name 'guest_wifi'
 	option input 'REJECT'        # Ruch wchodzacy do routera. uzytkownicy nie moga polaczyc sie z routerem.
-	option output 'ACCEPT'       # Ruch wychodzacy z routera. Router moze odpowiadac na zapytania .
+	option output 'ACCEPT'       # Ruch wychodzacy z routera. Router moze odpowiadac na zapytania.
 	option forward 'REJECT'      # Router nie pozwala na przesylanie danych pomiedzy urzadzaniami w tej strefie lub z tej strefy do innych stref. Uzytkownicy nie moga widziec innych podsieci.
 	option log '1'               # Wlacza logowanie zablokowanych pakietow. 
 	option log_limit '10/minute' # Zabezpieczenie, zeby logi nie zapchaly pamieci routera.
 	list network 'wifi_vlan70'   # Przypisuje do tej strefu interfejs sieciowy o nazwie wifi_vlan70.
 
 
-# Pozwala na ruch z vlanu 70 (guest_wifi) do sieci wan, czyli do internetu
+# Pozwala na ruch z vlanu 70 (guest_wifi) do sieci wan, czyli do internetu.
 config forwarding
 	option src 'guest_wifi'
 	option dest 'wan'
@@ -38,7 +38,7 @@ config rule
 # Konfiguracja vlan 60
 config zone
 	option name 'lan60'
-	option output 'ACCEPT'  # Router może wysyłac pakiety do urzadzen w sieci
+	option output 'ACCEPT'  # Router może wysylac pakiety do urzadzen w sieci
 	option forward 'REJECT' # Domyslnie blokuje przesyłanie ruchu przez te strefe. Zapewnia izolację od glownej sieci.
 	list network 'lan60'    # Przypisuje do tej strefy interfejs sieciowy o nazwie lan60.
 	option input 'REJECT'   # Blokuje ruch przychodzacy do samego routera z tej sieci. Urzadzenia z tej sieci nie moga zalogowac sie do panelu administratora i przez SSH
@@ -118,5 +118,6 @@ config rule
 	option dest 'lan60'                    # Siec izolowana (gdzie jest drukarka).
 	list dest_ip '192.168.x.x'             # IP drukarki.
 	option target 'ACCEPT'                 # Zezwol.
+
 
 

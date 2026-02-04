@@ -1,0 +1,60 @@
+config interface 'lan'
+	option proto 'static'
+	option netmask ''
+	option ip6assign '60'
+	option isolate '0'
+	option ipaddr ''
+	option device 'br-lan.50'
+
+config bridge-vlan
+	option device 'br-lan'
+	option vlan '50'
+	list ports 'lan1:u*'
+	list ports 'lan2:u*'
+	list ports 'lan3:u*'
+
+config bridge-vlan
+	option device 'br-lan'
+	option vlan '60'
+	list ports 'lan4:u*'
+	list ports 'lan5:u*'
+
+config interface 'lan60'
+	option proto 'static'
+	option device 'br-lan.60'
+	option ipaddr ''
+	option netmask ''
+
+config bridge-vlan
+	option device 'br-lan'
+	option vlan '70'
+
+config interface 'wifi_vlan70'
+	option proto 'static'
+	option netmask ''
+	option device 'br-lan.70'
+	option type 'bridge'
+	option ipaddr ''
+
+config device
+	option name 'rax1'
+	option macaddr ''
+	option ipv6 '0'
+
+config device
+	option type 'bridge'
+	option name 'br-guest'
+	option bridge_empty '1'
+	option mtu '1500'
+	option macaddr ''
+
+config interface 'netbird'
+	option proto 'none'
+	option device 'wt0'
+
+config rule 'main_static_net'
+	option gl_vpn_rules '1'
+	option suppress_prefixlength '0'
+	option priority '800'
+	option lookup '9910'
+	option disabled '0'

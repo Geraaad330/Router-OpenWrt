@@ -65,37 +65,9 @@ This repository contains sanitized versions of the following files:
 
 ## 🔔 Monitoring (Monit)
 
-The router utilizes **Monit** to continuously monitor system resources and critical services. Upon detecting an anomaly (e.g., high CPU usage, overheating, or service failure), it executes a custom notification script (`notify.sh`) to send alerts.
+The router utilizes **Monit** to continuously monitor system resources and critical services. Upon detecting an anomaly (e.g., high CPU usage, overheating, or service failure), it executes a custom notification script to send alerts.
 
-The configuration for Monit is stored in `/etc/monit.d/`:
-
-```conf
-# =========================================================================
-# OPENWRT ROUTER MONITORING (SCRIPT NOTIFICATIONS)
-# =========================================================================
-
-# Swap is not monitored as it is not used on routers
-check system $HOST
-    if cpu usage > 80% for 2 cycles then exec "/etc/monit.d/notify.sh"
-    if memory usage > 80% then exec "/etc/monit.d/notify.sh"
-    if loadavg (1min) > 4.0 then exec "/etc/monit.d/notify.sh"
-
-# --- DISK MONITORING ---
-check filesystem root_partition with path /
-    if space usage > 85% then exec "/etc/monit.d/notify.sh"
-
-# --- TEMPERATURE MONITORING ---
-check program router_temp with path "/bin/sh -c 'if [ $(cat /sys/class/thermal/thermal_zone0/temp) -gt 75000 ]; then exit 1; else exit 0; fi'"
-    if status > 0 for 2 cycles then exec "/etc/monit.d/notify.sh"
-
-# --- DNS MONITORING (ADGUARD HOME) ---
-check process adguardhome matching "AdGuardHome"
-    if failed host 127.0.0.1 port 53 type udp then exec "/etc/monit.d/notify.sh"
-
-# --- DHCP MONITORING (DNSMASQ) ---
-check process dnsmasq matching "dnsmasq"
-    if failed host 127.0.0.1 port 67 type udp then exec "/etc/monit.d/notify.sh"
-
-# --- INTERNET MONITORING (WAN) ---
+* 📄 **[View the Monit configuration file](monit.d/monit_config)** (Defines thresholds for CPU, RAM, Disk, and Services).
+* 📜 **[View the notification script (notify.sh)](monit.d/notify.sh)** (Handles sending webhooks to Gotify/Discord).
 check host INTERNET_WAN with address 1.1.1.1
     if failed ping count 3 with timeout 5 seconds for 2 cycles then exec "/etc/monit.d/notify.sh"

@@ -1,0 +1,29 @@
+# =========================================================================
+# MONITOROWANIE ROUTERA OPENWRT (NOTYFIKACJE PRZEZ SKRYPT)
+# =========================================================================
+
+# Nie monitoruje się swapu, bo nie ma go na routerach
+check system $HOST
+    if cpu usage > 80% for 2 cycles then exec "/etc/monit.d/notify.sh"
+    if memory usage > 80% then exec "/etc/monit.d/notify.sh"
+    if loadavg (1min) > 4.0 then exec "/etc/monit.d/notify.sh"
+
+# --- MONITOROWANIE DYSKU ---
+check filesystem root_partition with path /
+    if space usage > 85% then exec "/etc/monit.d/notify.sh"
+
+# --- MONITOROWANIE TEMPERATURY ---
+check program router_temp with path "/bin/sh -c 'if [ $(cat /sys/class/thermal/thermal_zone0/temp) -gt 75000 ]; then exit 1; else exit 0; fi'"
+    if status > 0 for 2 cycles then exec "/etc/monit.d/notify.sh"
+
+# --- MONITOROWANIE DNS (ADGUARD HOME) ---
+check process adguardhome matching "AdGuardHome"
+    if failed host 127.0.0.1 port 53 type udp then exec "/etc/monit.d/notify.sh"
+
+# --- MONITOROWANIE DHCP (DNSMASQ) ---
+check process dnsmasq matching "dnsmasq"
+    if failed host 127.0.0.1 port 67 type udp then exec "/etc/monit.d/notify.sh"
+
+# --- MONITOROWANIE INTERNETU (WAN) ---
+check host INTERNET_WAN with address 1.1.1.1
+    if failed ping count 3 with timeout 5 seconds for 2 cycles then exec "/etc/monit.d/notify.sh"

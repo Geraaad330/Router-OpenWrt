@@ -1,65 +1,101 @@
-# 🏠 Konfiguracja Sieci Domowej (OpenWrt / GL.iNet Flint 2)
+# 🏠 Home Network Configuration (OpenWrt / GL.iNet Flint 2)
 
-Repozytorium zawiera pliki konfiguracyjne dla routera **GL.iNet Flint 2 (GL-MT6000)**. Projekt realizuje architekturę bezpiecznej sieci domowej z podziałem na VLAN-y (izolacja IoT/Gości) oraz zdalnym dostępem przez Mesh VPN (NetBird).
+This repository contains configuration files for the **GL.iNet Flint 2 (GL-MT6000)** router. The project implements a secure home network architecture divided into VLANs (IoT/Guest isolation) with remote access via Mesh VPN (NetBird).
 
-## 🛠 Sprzęt
+## 🛠 Hardware
 
-| Urządzenie | Model | Rola |
+| Device | Model | Role |
 | :--- | :--- | :--- |
-| **Router** | GL.iNet Flint 2 (MT-6000) | Brama sieciowa, Firewall, AdGuard Home, VPN Gateway |
-| **Switch** | Wbudowany (DSA) | Zarządzanie ruchem przewodowym (VLAN 50, 60) |
+| **Router** | GL.iNet Flint 2 (MT-6000) | Network Gateway, Firewall, AdGuard Home, VPN Gateway |
+| **Switch** | Built-in (DSA) | Wired traffic management (VLAN 50, 60) |
 
-## 🌐 Topologia Sieci (VLAN & DSA)
+## 🌐 Network Topology (VLAN & DSA)
 
-Sieć została skonfigurowana w oparciu o **Distributed Switch Architecture (DSA)**, co pozwala na niezależne przypisywanie portów fizycznych do wirtualnych sieci LAN.
+The network is configured based on **Distributed Switch Architecture (DSA)**, allowing independent physical port assignment to virtual LANs.
 
-| VLAN ID | Nazwa Strefy | Typ / Porty | Opis |
+| VLAN ID | Zone Name | Type / Ports | Description |
 | :--- | :--- | :--- | :--- |
-| **50** | `lan` (Trusted) | **LAN 1, 2, 3** | Główna sieć domowa. Pełny dostęp do internetu i wszystkich urządzeń. |
-| **60** | `lan60` (IoT/Lab) | **LAN 4, 5** | Odizolowana sieć przewodowa. Dostęp do Internetu, ale brak dostępu do sieci głównej (LAN). |
-| **70** | `guest_wifi` | **Virtual (WiFi)** | Sieć wyłącznie dla gości/WiFi. Całkowita izolacja od reszty sieci domowej. |
-| **-** | `netbird` | **Interfejs wt0** | Wirtualny interfejs dla tunelu VPN (WireGuard). |
+| **50** | `lan` (Trusted) | **LAN 1, 2, 3** | Main home network. Full access to the Internet and all devices. |
+| **60** | `lan60` (IoT/Lab) | **LAN 4, 5** | Isolated wired network. Internet access allowed, but no access to the main network (LAN). |
+| **70** | `guest_wifi` | **Virtual (WiFi)** | Guest/WiFi network only. Total isolation from the rest of the home network. |
+| **-** | `netbird` | **Interface wt0** | Virtual interface for the VPN tunnel (WireGuard). |
 
-## 🔒 Firewall i Bezpieczeństwo
+## 🔒 Firewall and Security
 
-Konfiguracja opiera się na zasadzie **"Default Reject"** – domyślnie ruch jest blokowany, chyba że istnieje reguła zezwalająca.
+The configuration is based on a **"Default Reject"** policy – traffic is blocked by default unless an explicit allow rule exists.
 
-### 1. Strefa Gości (`guest_wifi` - VLAN 70)
-* **Izolacja:** Całkowita blokada dostępu do Routera (`Input: REJECT`) oraz innych sieci lokalnych (`Forward: REJECT`).
-* **Usługi:** Jawnie odblokowano tylko niezbędne porty UDP, aby sieć działała:
-  * Port **67** (DHCP) – przydzielanie adresów IP.
-  * Port **53** (DNS) – rozwiązywanie nazw (obsługiwane przez AdGuard Home).
-* **Internet:** Ruch wychodzący do WAN jest dozwolony.
+### 1. Guest Zone (`guest_wifi` - VLAN 70)
+* **Isolation:** Complete block on accessing the Router (`Input: REJECT`) and other local networks (`Forward: REJECT`).
+* **Services:** Only essential UDP ports are explicitly unblocked for network operation:
+  * Port **67** (DHCP) – IP address allocation.
+  * Port **53** (DNS) – Name resolution (handled by AdGuard Home).
+* **Internet:** Outbound traffic to WAN is allowed.
 
-### 2. Strefa IoT / Lab (`lan60` - VLAN 60)
-* **Izolacja:** Podobnie jak w strefie gości, blokada dostępu do Routera (SSH/Panel WWW) oraz sieci głównej.
-* **Przeznaczenie:** Bezpieczne środowisko dla urządzeń IoT, drukarek przewodowych lub testowych serwerów.
+### 2. IoT / Lab Zone (`lan60` - VLAN 60)
+* **Isolation:** Similar to the guest zone, access to the Router (SSH/Web Panel) and main network is blocked.
+* **Purpose:** A secure environment for IoT devices, wired printers, or test servers.
 
 ### 3. VPN Zone (`netbirdzone`)
-Strefa zaufana dla zdalnego dostępu administracyjnego.
-* **Dostęp administracyjny:** `Input: ACCEPT` – użytkownik połączony przez VPN ma dostęp do panelu routera, SSH i AdGuarda.
-* **Routing:** Włączona **Maskarada (NAT)**, aby urządzenia w LAN poprawnie odpowiadały na zapytania z tunelu VPN.
-* **Fix:** Włączony `mtu_fix` zapobiegający problemom z fragmentacją pakietów w tunelu.
+Trusted zone for remote administrative access.
+* **Admin Access:** `Input: ACCEPT` – users connected via VPN have access to the router panel, SSH, and AdGuard.
+* **Routing:** **Masquerading (NAT)** enabled so LAN devices correctly reply to queries from the VPN tunnel.
+* **Fix:** `mtu_fix` enabled to prevent packet fragmentation issues in the tunnel.
 
-## 🚦 Reguły Ruchu (Traffic Rules)
+## 🚦 Traffic Rules
 
-Zdefiniowano wyjątki od polityki izolacji ("Dziury w murze"):
+Exceptions to the isolation policy ("Holes in the wall") have been defined:
 
-1.  **Dostęp do Drukarki:**
-    * Umożliwia druk z sieci głównej (`lan`) na drukarkę w sieci izolowanej (`lan60`).
-    * Umożliwia druk z sieci gości (`guest_wifi`) na drukarkę w sieci izolowanej (`lan60`).
-    * *Security Note:* Dostęp jest ograniczony wyłącznie do konkretnego adresu IP drukarki.
+**Printer Access:**
+* Allows printing from the main network (`lan`) to the printer in the isolated network (`lan60`).
+* Allows printing from the guest network (`guest_wifi`) to the printer in the isolated network (`lan60`).
+> **Security Note:** Access is strictly restricted to the printer's specific IP address.
 
-2.  **NetBird VPN Routing:**
-    * **VPN -> LAN:** Dostęp do zasobów domowych z zewnątrz.
-    * **VPN -> WAN:** Funkcja "Exit Node" (bezpieczne wyjście na świat przez domowe IP).
-    * **LAN -> VPN:** Możliwość inicjowania połączeń do zdalnych peerów z sieci domowej.
+**NetBird VPN Routing:**
+* **VPN -> LAN:** Access to home resources from the outside.
+* **VPN -> WAN:** "Exit Node" function (secure outbound Internet access via the home IP).
+* **LAN -> VPN:** Ability to initiate connections to remote peers from the home network.
 
-## 📂 Pliki konfiguracyjne
+## 📂 Configuration Files
 
-W tym repozytorium znajdują się ocenzurowane (sanitized) wersje plików:
-* `/etc/config/network` - Konfiguracja interfejsów, mostków i przypisanie portów.
-* `/etc/config/firewall` - Definicje stref, reguł forwarding i traffic rules.
+This repository contains sanitized versions of the following files:
+* `/etc/config/network` - Interface, bridge, and port assignment configuration.
+* `/etc/config/firewall` - Zone definitions, forwarding, and traffic rules.
 
 ---
-*Uwaga: Wszelkie wrażliwe dane, takie jak publiczne adresy IP, adresy MAC, klucze prywatne oraz hasła zostały usunięte z plików konfiguracyjnych dla bezpieczeństwa.*
+
+## 🔔 Monitoring (Monit)
+
+The router utilizes **Monit** to continuously monitor system resources and critical services. Upon detecting an anomaly (e.g., high CPU usage, overheating, or service failure), it executes a custom notification script (`notify.sh`) to send alerts.
+
+The configuration for Monit is stored in `/etc/monit.d/`:
+
+```conf
+# =========================================================================
+# OPENWRT ROUTER MONITORING (SCRIPT NOTIFICATIONS)
+# =========================================================================
+
+# Swap is not monitored as it is not used on routers
+check system $HOST
+    if cpu usage > 80% for 2 cycles then exec "/etc/monit.d/notify.sh"
+    if memory usage > 80% then exec "/etc/monit.d/notify.sh"
+    if loadavg (1min) > 4.0 then exec "/etc/monit.d/notify.sh"
+
+# --- DISK MONITORING ---
+check filesystem root_partition with path /
+    if space usage > 85% then exec "/etc/monit.d/notify.sh"
+
+# --- TEMPERATURE MONITORING ---
+check program router_temp with path "/bin/sh -c 'if [ $(cat /sys/class/thermal/thermal_zone0/temp) -gt 75000 ]; then exit 1; else exit 0; fi'"
+    if status > 0 for 2 cycles then exec "/etc/monit.d/notify.sh"
+
+# --- DNS MONITORING (ADGUARD HOME) ---
+check process adguardhome matching "AdGuardHome"
+    if failed host 127.0.0.1 port 53 type udp then exec "/etc/monit.d/notify.sh"
+
+# --- DHCP MONITORING (DNSMASQ) ---
+check process dnsmasq matching "dnsmasq"
+    if failed host 127.0.0.1 port 67 type udp then exec "/etc/monit.d/notify.sh"
+
+# --- INTERNET MONITORING (WAN) ---
+check host INTERNET_WAN with address 1.1.1.1
+    if failed ping count 3 with timeout 5 seconds for 2 cycles then exec "/etc/monit.d/notify.sh"
